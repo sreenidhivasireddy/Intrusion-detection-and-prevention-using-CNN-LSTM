@@ -1,0 +1,175 @@
+import pandas as pd
+import numpy as np
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.feature_selection import SelectKBest, f_classif
+
+# Load your network traffic dataset
+dataset_path = '/content/simargl2022_train4.csv'
+df = pd.read_csv(dataset_path)
+
+import numpy as np
+df.replace([np.inf, -np.inf], np.nan, inplace=True)
+df.dropna(inplace=True)
+
+# Select features and target variable
+features = df.drop('ALERT', axis=1)  # Drop the target variable
+target = df['ALERT']
+
+# Separate numerical and categorical features
+numerical_features = features.select_dtypes(include=['int64', 'float64'])
+categorical_features = features.select_dtypes(exclude=['int64', 'float64'])
+
+# Encode the target variable
+label_encoder = LabelEncoder()
+y_train = label_encoder.fit_transform(target)
+
+# Standardize the numerical features
+scaler = StandardScaler()
+numerical_features_scaled = scaler.fit_transform(numerical_features)
+
+# One-hot encode categorical features (IP addresses)
+one_hot_encoder = OneHotEncoder(sparse=False, drop='first')
+categorical_features_encoded = one_hot_encoder.fit_transform(categorical_features)
+
+# Concatenate numerical and categorical features
+X_train = np.concatenate([numerical_features_scaled, categorical_features_encoded], axis=1)
+
+# Feature selection
+k = 10  # Number of features to select
+selector = SelectKBest(score_func=f_classif, k=k)
+X_train_selected = selector.fit_transform(X_train, y_train)
+selected_indices = selector.get_support(indices=True)  # Get the indices of selected features
+
+# Use the selected features for training
+X_train_selected_reshaped = X_train_selected.reshape((X_train_selected.shape[0], X_train_selected.shape[1], 1))
+
+# Split the data into training and testing sets
+X_train_selected, X_test_selected, y_train, y_test = train_test_split(X_train_selected_reshaped, y_train, test_size=0.2, random_state=42)
+model = tf.keras.Sequential([
+    # CNN layers
+    tf.keras.layers.Conv1D(32, kernel_size=3, activation='relu', input_shape=(X_train_selected.shape[1], 1)),
+    tf.keras.layers.MaxPooling1D(pool_size=2),
+    # LSTM layer
+    tf.keras.layers.LSTM(64, return_sequences=False),  # Adjust units as needed
+    # Dense layers
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
+
+# Compile the model with a lower learning rate
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+
+
+
+# Train the model using the selected features
+model.fit(X_train_selected, y_train, epochs=10, batch_size=32, validation_split=0.1)
+from sklearn.metrics import confusion_matrix
+from tabulate import tabulate
+y_pred = model.predict(X_test_selected)
+y_pred_classes = np.round(y_pred)
+conf_matrix = confusion_matrix(y_test, y_pred_classes)
+
+
+
+# Calculate TP, TN, FP, FN
+tp_list = [conf_matrix[i][i] for i in range(len(conf_matrix))]
+tn_list = [np.sum(conf_matrix) - np.sum(conf_matrix[i]) - np.sum(conf_matrix[:, i]) + conf_matrix[i][i] for i in range(len(conf_matrix))]
+fp_list = [np.sum(conf_matrix[:, i]) - conf_matrix[i][i] for i in range(len(conf_matrix))]
+fn_list = [np.sum(conf_matrix[i]) - conf_matrix[i][i] for i in range(len(conf_matrix))]
+
+# Calculate totals
+TP = sum(tp_list)
+TN = sum(tn_list)
+FP = sum(fp_list)
+FN = sum(fn_list)
+
+# Compute metrics
+accuracy = (TP + TN) / (TP + TN + FP + FN)
+precision = TP / (TP + FP)
+recall = TP / (TP + FN)
+f1_score = 2 * (precision * recall) / (precision + recall)
+
+print("True Positives (TP):", TP)
+print("True Negatives (TN):", TN)
+print("False Positives (FP):", FP)
+print("False Negatives (FN):", FN)
+
+print("Accuracy:", accuracy)
+print("Precision:", precision)
+print("Recall:", recall)
+print("F1_score:", f1_score)
+attack_labels = df['ALERT'].tolist()  # Assuming 'ALERT' is the column containing attack labels
+new_data_ip_addresses = df['IPV4_SRC_ADDR'].tolist()  # Assuming 'IPV4_SRC_ADDR' 
+# Make predictions on existing data ('features' instead of 'new_data_features')
+new_data_pred = model.predict(X_train_selected)
+new_data_pred_classes = np.round(new_data_pred)
+import subprocess
+import logging
+import requests
+def block_ip_address(new_data_ip_addresses):
+    try:
+        subprocess.run(['sudo', 'iptables', '-A', 'INPUT', '-s', new_data_ip_addresses, '-j', 'DROP'])
+        print(f"Blocked IP address {new_data_ip_addresses} using iptables.",flush=True)
+    except Exception as e:
+        logging.error(f"Error blocking IP address {new_data_ip_addresses}: {e}")
+
+# Define the Quarantine function
+def quarantine_system(ip_address):
+    try:
+        # Placeholder: Implement actions to quarantine the affected system
+        print(f"Quarantining system with IP address {ip_address}.",flush=True)
+
+        # Example: Block network access using iptables or other network isolation methods
+        subprocess.run(['sudo', 'iptables', '-A', 'INPUT', '-s', ip_address, '-j', 'DROP'])
+
+        # Example: Send a notification or alert to a security team
+        send_notification(f"Security Alert: Quarantining system with IP address {ip_address}")
+
+        # Log the event
+        logging.info(f"System with IP address {ip_address} quarantined.")
+    except Exception as e:
+        # Log the error
+        logging.error(f"Error quarantining system with IP address {ip_address}: {e}")
+
+# Define the block_suspicious_ports function
+def block_suspicious_ports(new_data_ip_addresses):
+    try:
+        subprocess.run(['sudo', 'iptables', '-A', 'INPUT', '-s', new_data_ip_addresses, '-p', 'tcp', '--dport', '1:1024', '-j', 'DROP'])
+        print(f"Blocked suspicious ports from IP address {new_data_ip_addresses} using iptables.",flush=True)
+    except Exception as e:
+        logging.error(f"Error blocking suspicious ports from IP address {new_data_ip_addresses}: {e}")
+# Placeholder: Example function to send a notification or alert
+def send_notification(message):
+    # Implement code to send a notification (e.g., email, SMS, or through a messaging service)
+    print(f"Notification: {message}",flush=True)
+
+
+
+        # Implement actions based on predictions
+for pred_class, attack_label, ip_address in zip(new_data_pred_classes, attack_labels, new_data_ip_addresses):
+    if pred_class == 0:
+        if attack_label == 'Denial of Service':
+            block_ip_address(ip_address)
+            print(f"Security Alert: DoS Attack Detected from IP {ip_address}. Blocked traffic.")
+            logging.info(f"DoS attack detected from IP {ip_address}. Action taken: Blocked traffic.")
+
+        elif attack_label == 'Malware':
+            quarantine_system(ip_address)
+            print(f"Security Alert: Malware Detected from IP {ip_address}. Quarantined system.")
+            logging.info(f"Malware detected from IP {ip_address}. Action taken: Quarantined system.")
+
+        elif attack_label == 'Port Scanning':
+            block_suspicious_ports(ip_address)
+            print(f"Security Alert: Port Scanning Detected from IP {ip_address}. Blocked suspicious ports.")
+            logging.info(f"Port scanning detected from IP {ip_address}. Action taken: Blocked suspicious ports.")
+
+        elif attack_label == 'None':
+            print("Normal network traffic detected. No action needed.")
+
+        else:
+            logging.warning(f"Unknown attack type: {attack_label}")

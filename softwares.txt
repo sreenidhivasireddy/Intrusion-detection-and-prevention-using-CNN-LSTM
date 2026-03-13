@@ -1,0 +1,9 @@
+You need to have python ,Colabs on your system to work on the project
+
+From the below link you can install the python :
+https://www.python.org/downloads/
+
+From the below link you will be redirected to Google colabs:
+https://colab.research.google.com/
+
+
