@@ -95,7 +95,7 @@ intrusion-detection-cnn-lstm/
 
 This project uses the **SIMARGL2022** network traffic dataset.
 
-- **Download:** [SIMARGL2022 on Kaggle](https://www.kaggle.com/datasets/simargl2022) *(link the actual source if different)*
+- **Download:** [SIMARGL2022 on Kaggle](https://www.kaggle.com/datasets/h2020simargl/simargl2022)
 - Place the CSV file at: `content/simargl2022_train4.csv` (if running in Google Colab)
 - Target column: `ALERT` (attack type label)
 - Source IP column: `IPV4_SRC_ADDR`
@@ -113,7 +113,7 @@ This project uses the **SIMARGL2022** network traffic dataset.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/intrusion-detection-cnn-lstm.git
+   git clone https://github.com/sreenidhivasireddy/intrusion-detection-cnn-lstm.git
    cd intrusion-detection-cnn-lstm
    ```
 
