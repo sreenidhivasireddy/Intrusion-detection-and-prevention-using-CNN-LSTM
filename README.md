@@ -19,7 +19,7 @@ A deep learning-based **Network Intrusion Detection and Prevention System (NIDPS
 | **Actual Positive** | 164 (FN) | 4,914 (TP) |
 
 ### Performance Metrics
-![Performance Metrics](results/Visual_Representation_of_Performance_Metrics.jpg)
+![Performance Metrics]("C:\Users\sreen\OneDrive\Desktop\Intrusion_detection_and_Prevention_Using_CNN_LSTM\Results\Confusion Matrix.png")
 
 ### Confusion Matrix
 ![Confusion Matrix](results/Confusion_Matrix.png)
